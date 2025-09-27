@@ -4,24 +4,19 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-#include "driver/gpio.h"
 #include "esp_log.h"
-
-#define MISO_PIN 13
-#define MOSI_PIN 11
-#define SCLK_PIN 12
-#define MAX_TRANSFER_SZ 4096
-#define ADC_CLOCK_SPEED 1000000
-#define ADC_MODE 0
-#define QUEUE_SIZE 1
-#define NUM_ADCS 1
-
-#define DATA_ACCUSATION_FREQUENCY_MS 10
+#include "Constant.h"
+#include "circularBuffer.h"
 
 LTC2498 adc[NUM_ADCS];
 int cs_pins[NUM_ADCS]={10};
-SemaphoreHandle_t data_mutex;
-SemaphoreHandle_t spi_mutex;
+SemaphoreHandle_t spi_sem;
+
+CircularBuffer cb_spi_network;
+
+static uint8_t adc_cycle_index=0;
+uint8_t reading_channels[]={LTC2498_P0_N1,LTC2498_P2_N3,LTC2498_P4_N5,LTC2498_P6_N7,
+                      LTC2498_P8_N9,LTC2498_P10_N11,LTC2498_P12_N13,LTC2498_P14_N15};
 
 // Initialize SPI bus
 void init_bus(){
@@ -37,69 +32,84 @@ void init_bus(){
     }
 }
 
-// Task to check if data is ready from ADCs
-void check_data_ready(void* args){
-    gpio_set_direction(MISO_PIN, GPIO_MODE_INPUT);
-    xSemaphoreTake(data_mutex, portMAX_DELAY);
-    ESP_LOGI("ADC", "Checking data ready status");
-    for(int i=0; i<NUM_ADCS; i++){
-        gpio_set_direction(adc[i].cs_pin, GPIO_MODE_OUTPUT);
-        gpio_set_level(adc[i].cs_pin, 0);
-    
-        esp_rom_delay_us(10);
-        if(gpio_get_level(MISO_PIN) == 0) {
-            adc[i].data_ready=true;
-        } else {
-            adc[i].data_ready=false;
-        }
-        gpio_set_level(adc[i].cs_pin, 1);
-        
-    }
-    vTaskDelay(DATA_ACCUSATION_FREQUENCY_MS / portTICK_PERIOD_MS);
-    
-    xSemaphoreGive(spi_mutex);
-    
-}
 
 // Task to read ADCs when data is ready
 void read_adc(void* arg){
-    xSemaphoreTake(spi_mutex, portMAX_DELAY);
+    while(1){
+    gpio_set_direction(MISO_PIN, GPIO_MODE_INPUT);
+    // ESP_LOGI("ADC", "Checking data ready status");
+    xSemaphoreTake(spi_sem, portMAX_DELAY);
     for(int i=0; i<NUM_ADCS; i++){
-        if(adc[i].data_ready){
+            
             LTC2498_read(&adc[i]);
-            adc[i].data_ready=false;
-        }
-        ESP_LOGI("ADC", "ADC %d Data: %lu", i, adc[i].rx_buffer);
-    }
+            uint64_t data_to_send= ((uint64_t)adc[i].tx_buffer << 32) | ((uint64_t)i << 28) | (uint64_t)adc[i].rx_buffer;
+            if(cb_push(&cb_spi_network, data_to_send)){
+                vTaskDelay(1 / portTICK_PERIOD_MS);
+            }
+            adc[i].command[0]=adc[i].reading_channel[adc_cycle_index];
+            adc_cycle_index=(adc_cycle_index+1)%8;
+         
+            ESP_LOGI("ADC", "ADC %d Data: %lu", i, adc[i].rx_buffer);
+        }  
     vTaskDelay(DATA_ACCUSATION_FREQUENCY_MS / portTICK_PERIOD_MS);  
-    ESP_LOGI("ADC", "Finished reading ADCs");
-    xSemaphoreGive(data_mutex);
-    
+    if (spi_sem) {
+    xSemaphoreGive(spi_sem);
+    } 
+    else {
+        ESP_LOGE("ADC","data_mutex is NULL before Give!");
+    }
+    // ESP_LOGI("STACK","read_adc min free: %d words", uxTaskGetStackHighWaterMark(NULL));
+    }
 }
+
+void send_data_task(void* arg) {
+    while (1) {
+        if (cb_spi_network.count > 0) {
+            uint64_t data;
+            // ESP_LOGI("NETWORK", "Sending data from buffer, count: %d", cb_spi_network.count);
+            if (cb_pop(&cb_spi_network, &data) == 0) {
+                // Send raw 64-bit data as 8 bytes
+                send_data((const char*)&data, sizeof(data));
+            }
+        }
+        vTaskDelay(DATA_ACCUSATION_FREQUENCY_MS / portTICK_PERIOD_MS);
+    }
+}
+
 
 // Main application
 void setup(){
     init_network();
+    // xSemaphoreGive(spi_sem);
     init_bus();
     for (int i=0; i<NUM_ADCS; i++){
-        adc[i].cs_pin=cs_pins[i];
-        adc[i].clock_speed_hz=ADC_CLOCK_SPEED;
-        adc[i].mode=ADC_MODE;
-        adc[i].queue_size=QUEUE_SIZE;
-        adc[i].data_ready=true;
-        adc[i].rx_buffer=0;
+        adc[i].serif->cs_pin=cs_pins[i];
+        adc[i].serif->clock_speed_hz=ADC_CLOCK_SPEED;
+        adc[i].serif->mode=ADC_MODE;
+        adc[i].serif->queue_size=QUEUE_SIZE;
+        adc[i].reading_channel=reading_channels;
         init_adc(&adc[i]);
     }
-    data_mutex=xSemaphoreCreateBinary();
-    spi_mutex=xSemaphoreCreateBinary();
-    xSemaphoreGive(spi_mutex);
+    cb_init(&cb_spi_network, BUFFER_SIZE);
+    
 }
 
 // Main function
 void app_main(void){
+spi_sem=xSemaphoreCreateBinary();
+
+if (spi_sem == NULL) {
+        ESP_LOGE("MAIN", "Failed to create semaphores");
+        while(1);
+    }
+
+  // start the alternation
 setup();
-xTaskCreate(check_data_ready, "check_data_ready", 1024, NULL, 5, NULL);
-xTaskCreate(read_adc, "read_adc", 1024, NULL, 5, NULL);
+
+xTaskCreate(read_adc, "read_adc", 3072, NULL, 1, NULL);
+xTaskCreate(send_data_task, "send_data_task", 3072, NULL, 1, NULL);
+
+
 while(1){
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     }

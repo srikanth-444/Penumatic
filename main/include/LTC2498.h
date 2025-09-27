@@ -1,6 +1,9 @@
 
 #include "driver/spi_master.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
+#include "Constant.h"
+#include "Serif.h"
 #include <stdint.h>
 
 
@@ -12,6 +15,7 @@
 /*! @name Mode Configuration for High Speed Family
  @{
 */
+
 #define LTC2498_KEEP_PREVIOUS_MODE              0x80
 #define LTC2498_KEEP_PREVIOUS_SPEED_RESOLUTION  0x00
 #define LTC2498_SPEED_1X                        0x00
@@ -132,19 +136,13 @@ adc_command = (LTC2449_CH3 | LTC2449_OSR_2048) | LTC2449_SPEED_2X;
 /*! @}*/
 
 typedef struct{
-    uint8_t cs_pin;
-    uint8_t adc_high_command;
-    uint8_t adc_low_command;
-    uint32_t tx_buffer;
-    uint32_t rx_buffer;
-    uint32_t clock_speed_hz;
-    uint8_t mode;
-    uint8_t queue_size;
-    volatile bool data_ready;
-    spi_device_handle_t devhandler;
+    uint8_t* command;
+    uint8_t* response;
+    Serif* serif;
+    uint8_t* reading_channel;
 }LTC2498;
 
-void init_adc(LTC2498* device);
+void init_adc(LTC2498* device,spi_host_device_t bus,uint32_t clk, uint8_t mode, uint8_t qsize);
 
 void LTC2498_read(LTC2498* device);
 
