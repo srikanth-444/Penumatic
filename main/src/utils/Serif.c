@@ -8,7 +8,7 @@ void init_device(Serif* device){
     .spics_io_num =device->cs_pin,
     .queue_size = device->queue_size,
     };
-    spi_bus_add_device(mc33996_device->bus, &devcfg, &device->devhandler);
+    esp_err_t ret=spi_bus_add_device(device->bus, &devcfg, &device->devhandler);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to add SPI device: %d", ret);
     }
@@ -17,19 +17,19 @@ void send_data(Serif* device){
     
         
         memset(&device->t, 0, sizeof(device->t));
-        t.length = device->buff_len*8
-        t.tx_buffer = device->tx_buffer;
-        t.rx_buffer = device->rx_buffer;
-        esp_err_t ret=spi_device_transmit(device->devhandler, &t);
+        device->t.length = device->buff_len*8;
+        device->t.tx_buffer = device->tx_buffer;
+        device->t.rx_buffer = device->rx_buffer;
+        esp_err_t ret=spi_device_transmit(device->devhandler, &device->t);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to read data: %d", ret);
         }
 }
 void destroy_serif(Serif* device){
     if(!device) return;
-    free(device->tx_buffer)
-    free(device->rx_buffer)
-    free(device)
+    free(device->tx_buffer);
+    free(device->rx_buffer);
+    free(device);
 }
 
 Serif* create_serif(spi_host_device_t bus, uint32_t clk, uint8_t mode, uint8_t qsize, uint8_t buff_len) {

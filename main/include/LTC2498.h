@@ -1,7 +1,5 @@
-
-#include "driver/spi_master.h"
-#include "esp_log.h"
-#include "driver/gpio.h"
+#ifndef LTC2498_H
+#define LTC2498_H
 #include "Constant.h"
 #include "Serif.h"
 #include <stdint.h>
@@ -136,15 +134,14 @@ adc_command = (LTC2449_CH3 | LTC2449_OSR_2048) | LTC2449_SPEED_2X;
 /*! @}*/
 
 typedef struct{
-    uint8_t* command;
-    uint8_t* response;
+    uint8_t command[4];
+    uint8_t response[4];
     Serif* serif;
     uint8_t* reading_channel;
 }LTC2498;
 
-void init_adc(LTC2498* device,spi_host_device_t bus,uint32_t clk, uint8_t mode, uint8_t qsize);
-
-void LTC2498_read(LTC2498* device);
-
+void init_adc( LTC2498* device, spi_host_device_t bus, uint32_t clk, uint8_t mode, uint8_t qsize,char type);
+bool LTC2498_read(LTC2498* device);
 
 
+#endif

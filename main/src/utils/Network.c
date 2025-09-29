@@ -3,8 +3,9 @@ int sock = -1;
 bool socket_ready = false;
 struct sockaddr_in dest_addr;
 SemaphoreHandle_t network_sem;
-extern SemaphoreHandle_t spi_sem;
-static const char *TAG = "NETWORK";
+extern SemaphoreHandle_t bus1_sem;
+extern SemaphoreHandle_t bus2_sem;
+extern SemaphoreHandle_t socket_mutex;
 esp_netif_t *ap_netif;
 esp_netif_ip_info_t ip_info;
 
@@ -16,10 +17,12 @@ static void ip_event_handler(void* arg, esp_event_base_t event_base,
         ip_event_assigned_ip_to_client_t* event = (ip_event_assigned_ip_to_client_t*) event_data;
         ip_info.ip = event->ip;
         xSemaphoreGive(network_sem);
-        xSemaphoreGive(spi_sem);
+        xSemaphoreGive(bus1_sem);
+        xSemaphoreGive(bus2_sem);
         ESP_LOGI("IP_EVENT", "Assigned IP to station: " IPSTR, IP2STR(&event->ip));
     }
 }
+
 void init_network(void)
 {
     network_sem = xSemaphoreCreateBinary();
@@ -66,15 +69,16 @@ void init_network(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI("WIFI", "Wi-Fi AP started. SSID:%s password:%s channel:%d",
-             ESP_WIFI_SSID, ESP_WIFI_PASS, ESP_WIFI_CHANNEL);
-    
+             ESP_WIFI_SSID, ESP_WIFI_PASS, ESP_WIFI_CHANNEL);   
 }
 
 bool connect_to_server() {
     xSemaphoreTake(network_sem, portMAX_DELAY); // wait for IP assignment
-    xSemaphoreTake(spi_sem,portMAX_DELAY);
+    xSemaphoreTake(bus1_sem,portMAX_DELAY);
+    xSemaphoreTake(bus2_sem,portMAX_DELAY);
+    xSemaphoreTake(socket_mutex,portMAX_DELAY);
     if(ip_info.ip.addr == 0) {
-        ESP_LOGW(TAG, "No device connected to AP");
+        ESP_LOGW(NETWORK, "No device connected to AP");
         xSemaphoreGive(network_sem);
         return false;
     }
@@ -91,19 +95,21 @@ bool connect_to_server() {
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
-        ESP_LOGE(TAG, "Socket creation failed");
+        ESP_LOGE(NETWORK, "Socket creation failed");
         xSemaphoreGive(network_sem);
         return false;
     }
 
     if (connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) == 0) {
         socket_ready = true;
-        ESP_LOGI(TAG, "Connected!");
+        ESP_LOGI(NETWORK, "Connected!");
         xSemaphoreGive(network_sem);
-        xSemaphoreGive(spi_sem);
+        xSemaphoreGive(bus1_sem);
+        xSemaphoreGive(bus2_sem);
+        xSemaphoreGive(socket_mutex);
         return true;
     } else {
-        ESP_LOGE(TAG, "Connect failed");
+        ESP_LOGE(NETWORK, "Connect failed");
         socket_ready = false;
         close(sock);
         sock = -1;
@@ -113,18 +119,33 @@ bool connect_to_server() {
     
 }
 
-void send_data(const char *data, int len) {
+void send_over_net(const char *data, int len) {
     if (!socket_ready) {
         if (!connect_to_server()) {
             return;
         }
     }
-    
     int ret = send(sock, data, len, 0);
     if (ret < 0) {
-        ESP_LOGE(TAG, "Send failed, reconnecting...");
+        ESP_LOGE(NETWORK, "Send failed, reconnecting...");
         socket_ready=false;
         connect_to_server();  // retry connection immediately
     }
     
 }
+
+void receive_over_net(char *data, int len) {
+    if (!socket_ready) {
+        if (!connect_to_server()) {
+            return; // not connected
+        }
+    }
+
+    int ret = recv(sock, data, len, 0); // 0 = default flags
+    if (ret < 0) {
+        ESP_LOGE(NETWORK, "Receive failed, reconnecting...");
+        socket_ready = false;
+        connect_to_server();
+    }
+}
+

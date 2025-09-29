@@ -1,7 +1,7 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
   "idf.espIdfPathWin": "D:\\Users\\popur\\esp\\v5.5.1\\esp-idf",
-  "idf.pythonInstallPath": "D:\\Users\\popur\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+  "idf.pythonInstallPath": "/opt/esp/python_env/idf6.0_py3.12_env/bin/python",
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"
   ],
@@ -17,5 +17,8 @@
     "--compile-commands-dir=${workspaceFolder}\\build"
   ],
   "idf.flashType": "UART",
-  "idf.port": "/dev/ttyACM0"
+  "idf.port": "/dev/ttyACM0",
+  "files.associations": {
+    "chrono": "c"
+  }
 }

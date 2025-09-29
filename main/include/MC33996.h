@@ -1,4 +1,7 @@
+#ifndef MC33996_H
+#define MC33996_H
 #include "Serif.h"
+#include "Constant.h"
 #define ALL_ON          0xFF
 #define ALL_OFF         0x00
 #define ON_OFF          0b00000000
@@ -46,17 +49,19 @@
 #define s1_off  (~s1_on)  
 #define s0_off  (~s0_on)  
 
-void enable_open_load();
-void enable_sfpd_therm();
-void enable_pwm();
-void set_pwm_config();
-void set_reset();
-
 typedef struct{
-    uint8_t* command;
-    uint8_t* response;
+    uint8_t command[3];
+    uint8_t response[3];
     Serif* serif;
     bool r1,r2,r3,r4,r5,r6,r7,r8,l1,l2,l3,l4,l5,l6,l7,l8;
 }MC33996;
 
-void init_actuator(MC33996* device,spi_host_device_t bus,uint32_t clk, uint8_t mode, uint8_t qsize);
+void init_MC33996(MC33996* device,spi_host_device_t bus,uint32_t clk, uint8_t mode, uint8_t qsize);
+void MC33996_enable_open_load(MC33996* device);
+void MC33996_enable_sfpd_therm(MC33996* device);
+void MC33996_enable_pwm(MC33996* device);
+void MC33996_set_pwm_config(MC33996* device);
+void MC33996_set_reset(MC33996* device);
+void MC33996_update(MC33996* device);
+
+#endif

@@ -1,116 +1,73 @@
 #include <stdio.h>
 #include "Network.h"
 #include "LTC2498.h"
+#include "MC33996.h"
+#include "DRV8311.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "Constant.h"
 #include "circularBuffer.h"
+#include "Rtos_tasks.h"
 
-LTC2498 adc[NUM_ADCS];
-int cs_pins[NUM_ADCS]={10};
-SemaphoreHandle_t spi_sem;
+LTC2498 differential_sensor;
+LTC2498 pressure_sensor;
+MC33996 actuator;
+DRV8311 motor_driver;
 
-CircularBuffer cb_spi_network;
+SemaphoreHandle_t bus1_sem;
+SemaphoreHandle_t bus2_sem;
+SemaphoreHandle_t socket_mutex;
+CircularBuffer network_upload_buffer;
 
-static uint8_t adc_cycle_index=0;
-uint8_t reading_channels[]={LTC2498_P0_N1,LTC2498_P2_N3,LTC2498_P4_N5,LTC2498_P6_N7,
-                      LTC2498_P8_N9,LTC2498_P10_N11,LTC2498_P12_N13,LTC2498_P14_N15};
+uint8_t differential_commands[] = {LTC2498_P0_N1,LTC2498_P2_N3,LTC2498_P4_N5,LTC2498_P6_N7,LTC2498_P8_N9,LTC2498_P10_N11,LTC2498_P12_N13,LTC2498_P14_N15};
 
-// Initialize SPI bus
-void init_bus(){
-  spi_bus_config_t buscfg = {
-        .miso_io_num = MISO_PIN,
-        .mosi_io_num = MOSI_PIN,
-        .sclk_io_num = SCLK_PIN,
+// Initialize SPI buses
+void init_spi_bus(){
+    spi_bus_config_t buscfg1 = {
+        .miso_io_num = MISO_PIN1,
+        .mosi_io_num = MOSI_PIN1,
+        .sclk_io_num = SCLK_PIN1,
         .max_transfer_sz = MAX_TRANSFER_SZ
     };
-   esp_err_t ret= spi_bus_initialize(SPI2_HOST, &buscfg, 0) ;
+    spi_bus_config_t buscfg2 = {
+        .miso_io_num = MISO_PIN2,
+        .mosi_io_num = MOSI_PIN2,
+        .sclk_io_num = SCLK_PIN2,
+        .max_transfer_sz = MAX_TRANSFER_SZ
+    };
+    esp_err_t ret= spi_bus_initialize(SPI1_HOST, &buscfg1, 0);
     if (ret != ESP_OK) {
-        ESP_LOGE("ADC", "Failed to initialize spi bus: %d", ret);
+        ESP_LOGE(SPIBUS, "Failed to initialize spi bus: 1");
+    }
+    ret= spi_bus_initialize(SPI2_HOST, &buscfg2, 0) ;
+    if (ret != ESP_OK) {
+        ESP_LOGE(SPIBUS, "Failed to initialize spi bus: 2");
     }
 }
-
-
-// Task to read ADCs when data is ready
-void read_adc(void* arg){
-    while(1){
-    gpio_set_direction(MISO_PIN, GPIO_MODE_INPUT);
-    // ESP_LOGI("ADC", "Checking data ready status");
-    xSemaphoreTake(spi_sem, portMAX_DELAY);
-    for(int i=0; i<NUM_ADCS; i++){
-            
-            LTC2498_read(&adc[i]);
-            uint64_t data_to_send= ((uint64_t)adc[i].tx_buffer << 32) | ((uint64_t)i << 28) | (uint64_t)adc[i].rx_buffer;
-            if(cb_push(&cb_spi_network, data_to_send)){
-                vTaskDelay(1 / portTICK_PERIOD_MS);
-            }
-            adc[i].command[0]=adc[i].reading_channel[adc_cycle_index];
-            adc_cycle_index=(adc_cycle_index+1)%8;
-         
-            ESP_LOGI("ADC", "ADC %d Data: %lu", i, adc[i].rx_buffer);
-        }  
-    vTaskDelay(DATA_ACCUSATION_FREQUENCY_MS / portTICK_PERIOD_MS);  
-    if (spi_sem) {
-    xSemaphoreGive(spi_sem);
-    } 
-    else {
-        ESP_LOGE("ADC","data_mutex is NULL before Give!");
-    }
-    // ESP_LOGI("STACK","read_adc min free: %d words", uxTaskGetStackHighWaterMark(NULL));
-    }
-}
-
-void send_data_task(void* arg) {
-    while (1) {
-        if (cb_spi_network.count > 0) {
-            uint64_t data;
-            // ESP_LOGI("NETWORK", "Sending data from buffer, count: %d", cb_spi_network.count);
-            if (cb_pop(&cb_spi_network, &data) == 0) {
-                // Send raw 64-bit data as 8 bytes
-                send_data((const char*)&data, sizeof(data));
-            }
-        }
-        vTaskDelay(DATA_ACCUSATION_FREQUENCY_MS / portTICK_PERIOD_MS);
-    }
-}
-
 
 // Main application
 void setup(){
     init_network();
-    // xSemaphoreGive(spi_sem);
-    init_bus();
-    for (int i=0; i<NUM_ADCS; i++){
-        adc[i].serif->cs_pin=cs_pins[i];
-        adc[i].serif->clock_speed_hz=ADC_CLOCK_SPEED;
-        adc[i].serif->mode=ADC_MODE;
-        adc[i].serif->queue_size=QUEUE_SIZE;
-        adc[i].reading_channel=reading_channels;
-        init_adc(&adc[i]);
-    }
-    cb_init(&cb_spi_network, BUFFER_SIZE);
-    
+    init_spi_bus();
+    init_adc(&differential_sensor,SPI2_HOST,ADC_CLOCK_SPEED, ADC_MODE, QUEUE_SIZE,'l');
+    init_adc(&pressure_sensor,SPI2_HOST,ADC_CLOCK_SPEED, ADC_MODE, QUEUE_SIZE,'p');
+    init_MC33996(&actuator,SPI2_HOST,ADC_CLOCK_SPEED, ADC_MODE, QUEUE_SIZE);
+    init_circular_buffer(&network_upload_buffer, BUFFER_SIZE);
 }
 
 // Main function
 void app_main(void){
-spi_sem=xSemaphoreCreateBinary();
+    bus1_sem=xSemaphoreCreateMutex();
+    bus2_sem=xSemaphoreCreateMutex();
+    socket_mutex=xSemaphoreCreateMutex();
+    setup();
+    xTaskCreate(read_adc, "read_limbs", 3072, &differential_sensor, 1, NULL);
+    xTaskCreate(read_adc, "read_pressure",3072, &pressure_sensor, 1, NULL);
+    xTaskCreate(network_upload, "send_data", 3072, NULL, 1, NULL);
+    xTaskCreate(network_download, "receive_data", 3072, NULL, 1, NULL);
+    xTaskCreate(write_actuator, "solenoid",3072, NULL, 1, NULL);
+    xTaskCreate(motor_control_task, "motor_control", 3072, NULL, 3, NULL);
 
-if (spi_sem == NULL) {
-        ESP_LOGE("MAIN", "Failed to create semaphores");
-        while(1);
-    }
-
-  // start the alternation
-setup();
-
-xTaskCreate(read_adc, "read_adc", 3072, NULL, 1, NULL);
-xTaskCreate(send_data_task, "send_data_task", 3072, NULL, 1, NULL);
-
-
-while(1){
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
 }
