@@ -1,0 +1,20 @@
+# KiCad junk
+*-backups/
+#auto_saved_files#
+*.lck
+fp-info-cache
+*.bak
+
+# Fabrication
+greber/
+*.zip
+
+# 3D CAD
+*.step
+*.stp
+
+# VSCode
+.vscode/
+
+# Build
+build/

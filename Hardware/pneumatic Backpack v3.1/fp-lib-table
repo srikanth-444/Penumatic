@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "pneumatic Backpack v2.0-backups")(type "KiCad")(uri "${KIPRJMOD}/pneumatic Backpack v2.0-backups")(options "")(descr ""))
+  (lib (name "mod")(type "KiCad")(uri "${KIPRJMOD}/mod")(options "")(descr ""))
+)

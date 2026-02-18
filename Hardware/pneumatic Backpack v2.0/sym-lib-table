@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "LTC2498IUHF_TRPBF")(type "KiCad")(uri "${KIPRJMOD}/LTC2498IUHF_TRPBF.kicad_sym")(options "")(descr ""))
+  (lib (name "LTC6906IS6_TRPBF")(type "KiCad")(uri "${KIPRJMOD}/LTC6906IS6_TRPBF.kicad_sym")(options "")(descr ""))
+)
