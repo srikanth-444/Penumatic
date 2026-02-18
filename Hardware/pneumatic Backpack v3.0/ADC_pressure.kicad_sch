@@ -6239,21 +6239,21 @@
 		(fields_autoplaced yes)
 		(uuid "a2130c50-2822-4097-a70e-cbe5cccd0101")
 		(property "Reference" "R3"
-			(at 19.05 62.2301 0)
+			(at 24.13 59.6899 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
-		(property "Value" "100"
-			(at 19.05 59.6901 0)
+		(property "Value" "100k"
+			(at 24.13 62.2299 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
@@ -6857,21 +6857,21 @@
 		(fields_autoplaced yes)
 		(uuid "e03cfd85-b4d5-4cad-9fd6-71957d1532e1")
 		(property "Reference" "R4"
-			(at 19.05 68.5801 0)
+			(at 24.13 66.0399 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
-		(property "Value" "100"
-			(at 19.05 66.0401 0)
+		(property "Value" "100k"
+			(at 24.13 68.5799 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
