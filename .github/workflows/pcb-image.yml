@@ -28,7 +28,7 @@ jobs:
       - name: Render PCB image Top Board
         uses: linalinn/kicad-render@main
         with:
-          pcb_file: "Hardware/pneumatic Backpack v3.0/pneumatic Backpack v3.1.kicad_pcb"
+          pcb_file: "Hardware/pneumatic Backpack v3.1/pneumatic Backpack v3.1.kicad_pcb"
           output_path: ${{ github.workspace }}/images/top
           background: transparent
 
