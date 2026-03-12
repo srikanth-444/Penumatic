@@ -1,20 +1,27 @@
-# KiCad junk
-*-backups/
-#auto_saved_files#
-*.lck
-fp-info-cache
+# Temporary and Backup files
+*.000
 *.bak
+*.bck
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*~
+_autosave-*
+\#auto_saved_files\#
+fp-info-cache
+*-backups/
 
-# Fabrication
-greber/
-*.zip
+# Local Project Settings (unnecessary for other users)
+*.kicad_prl
 
-# 3D CAD
+# Netlist and Autorouter files
+*.net
+*.dsn
+*.ses
+*.lck
 *.step
-*.stp
 
-# VSCode
-.vscode/
 
-# Build
-build/
+/build
+.vscode
+greber/
+**/greber/
