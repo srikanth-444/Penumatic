@@ -19,11 +19,17 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Render PCB image
+      - name: Render PCB image Bottom board
         uses: linalinn/kicad-render@main
         with:
           pcb_file: "Hardware/pneumatic Backpack v3.0/pneumatic Backpack v3.0.kicad_pcb"
-          output_path: ${{ github.workspace }}/images
+          output_path: ${{ github.workspace }}/images/bottom
+          background: transparent
+      - name: Render PCB image Top Board
+        uses: linalinn/kicad-render@main
+        with:
+          pcb_file: "Hardware/pneumatic Backpack v3.0/pneumatic Backpack v3.1.kicad_pcb"
+          output_path: ${{ github.workspace }}/images/top
           background: transparent
 
       - name: Commit rendered images
