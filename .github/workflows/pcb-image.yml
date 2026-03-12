@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "Hardware/**"
 
 jobs:
   render-image:
