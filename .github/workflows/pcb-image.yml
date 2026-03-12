@@ -39,3 +39,30 @@ jobs:
           git add images/*
           git diff --staged --quiet || git commit -m "Auto-update PCB renders [skip ci]"
           git push
+
+      - name: Generate Gerbers (KiBot)
+        uses: INTI-CMNB/KiBot@v2_k6
+        with:
+          # Path to your KiCad board file
+          board: 'Hardware/pneumatic Backpack v3.0/pneumatic Backpack v3.0.kicad_pcb'
+          # Use a built-in or custom config to define Gerber output
+          config: 'kibot_output_gerbers'
+          
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bottom_gerbers
+          path: output/  # Default KiBot output folder
+
+      - name: Generate Gerbers (KiBot)
+        uses: INTI-CMNB/KiBot@v2_k6
+        with:
+          # Path to your KiCad board file
+          board: 'Hardware/pneumatic Backpack v3.1/pneumatic Backpack v3.1.kicad_pcb'
+          # Use a built-in or custom config to define Gerber output
+          config: 'kibot_output_gerbers'
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Top_gerbers
+          path: output/  # Default KiBot output folder
