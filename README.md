@@ -5,11 +5,13 @@ This is a Penumatic System that senses and actuates the multiple soft actuators 
 To control and sense the robotic actuator system, developed using KiCad 8, this repository will build the Gerber files of the system upon pushing the action artifacts specific to JLCPCB 
 
 
-### Components
-ESP-32 S3 Micro Controller
-LTC2498 24-bit ADC to sense the actuator position
-LTC6906 external oscillator for ADC
-MCZ33996 for actuating the solenoidal valves
+| Component     | Function            | Notes                                                    |
+| ------------- | ------------------- | -------------------------------------------------------- |
+| **ESP-32 S3** | Microcontroller     | Handles system control, communication, and overall logic |
+| **LTC2498**   | 24-bit ADC          | Senses actuator position with high precision             |
+| **LTC6906**   | External oscillator | Provides clock signal for ADC operation                  |
+| **MCZ33996**  | Solenoid driver     | Actuates solenoidal valves based on control signals      |
+
 
 
 ## _Firmware_ 
