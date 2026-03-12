@@ -5,6 +5,6 @@
 
 
 ### Images
-![top](<github_username>.github.io/<repo_name>/top.png)
-![bottom](<github_username>.github.io/<repo_name>/bottom.png)
+![top](images/top.png)
+![bottom](images/bottom.png)
 rendered with [kicad-render](https://github.com/linalinn/kicad-render)
