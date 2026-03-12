@@ -47,13 +47,14 @@ jobs:
           board: 'Hardware/pneumatic Backpack v3.0/pneumatic Backpack v3.0.kicad_pcb'
           # Use a built-in or custom config to define Gerber output
           config: 'Hardware/jlc_config.yml'
+          dir: "kibot_output_v3_0"
        
           
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Bottom_gerbers
-          path: output/  # Default KiBot output folder
+          path: kibot_output_v3_0/  # Default KiBot output folder
 
       - name: Generate Gerbers (KiBot)
         uses: INTI-CMNB/KiBot@v2_k8
@@ -62,9 +63,10 @@ jobs:
           board: 'Hardware/pneumatic Backpack v3.1/pneumatic Backpack v3.1.kicad_pcb'
           # Use a built-in or custom config to define Gerber output
           config: 'Hardware/jlc_config.yml'
+          dir: "kibot_output_v3_1"
         
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Top_gerbers
-          path: output/  # Default KiBot output folder
+          path: kibot_output_v3_1/  # Default KiBot output folder
