@@ -19,6 +19,9 @@ jobs:
       - name: Setup Pages
         if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
+      - name: Create index page
+        run: |
+          echo "<html><body><h1>PCB Render</h1><img src='*.png'></body></html>" > images/index.html
 
       - name: Upload Artifact
         if: github.ref == 'refs/heads/main'
